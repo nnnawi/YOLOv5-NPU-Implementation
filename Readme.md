@@ -121,35 +121,74 @@ torch.onnx.export(
 ```
 
 ## Quantization Workflow
-### Quantization Scripts Overview
-Our quantization approach involves multiple scripts with distinct behaviors:
+### Dataset Configuration
+The quantization process uses a subset of the COCO dataset:
+- **Dataset Source**: COCO val2017
+- **Sample Size**: First 100 images
+- **Class Configuration**: Using COCO128 class definitions
+- **Class Categories**: 80 classes including person, bicycle, car, etc. (as defined in COCO128)
 
-1. **`quantization.py`**:
+### Calibration Dataset Setup
+1. Download the COCO val2017 dataset
+2. Extract the first 100 images for calibration
+3. Ensure annotations follow COCO format
+4. Verify class mappings match COCO128 configuration
+
+### Quantization Scripts Overview
+Our quantization approach involves two main scripts with distinct behaviors:
+
+1. **`quantize.py`**:
    - Passes CPU benchmarking
    - Does not quantize inputs/outputs
    - Not compatible with NPU
+   - Uses calibration dataset for determining quantization parameters
    - Workflow Partner: `run_inference.py`
 
-2. **`quantization1.py`**:
+2. **`quantize1.py`**:
    - Works with NPU
    - Introduces parasite inferences
+   - Uses the same calibration dataset
+   - Supports full INT8 quantization including inputs/outputs
    - Workflow Partner: `run_inference1.py`
+
+### Quantization Process
+For both scripts, the quantization workflow follows these steps:
+1. Load the calibration dataset (first 100 images from COCO val2017)
+2. Preprocess images according to YOLOv5 requirements
+3. Run calibration to determine optimal quantization parameters
+4. Apply quantization to the model
+5. Validate quantized model performance
 
 ### Current Status
 **Latest Achievement**: Successfully achieved inference on the target board, but experiencing parasite detections during NPU execution.
+      We found on the NXP forum people who encountered this same issue [link to the ticket](https://community.nxp.com/t5/i-MX-Processors/Yolov5-Tflite-CPU-vs-VX-delegate-NPU/td-p/1557873) 
+
+### Dataset References
+- COCO128 Class Configuration: [GitHub - ultralytics/yolov5/data/coco128.yaml](https://github.com/ultralytics/yolov5/blob/master/data/coco128.yaml)
+- Full COCO Dataset: [Kaggle - COCO 2017 Dataset](https://www.kaggle.com/datasets/awsaf49/coco-2017-dataset)
 
 ## Deployment Process
+### Board Directory Structure
+The following directory structure should be maintained on the target board:
+```
+yolov5s/
+├── model/
+│   └── yolov5s_quant_*.tflite    # Quantized model files
+├── img/
+│   └── zidane.jpg                # Test images
+├── output/                       # Directory for inference results
+```
+
 ### File Transfer Methods
 1. **SCP (Secure Copy)**:
    ```bash
-   scp -r /path/to/local/folder username@remote_host:/path/to/destination/
+   scp -r /path/to/local/yolov5s username@remote_host:/path/to/destination/
    ```
 
 2. **RSync (Synchronization)**:
    ```bash
-   rsync -avz /path/to/local/folder/ username@remote_host:/path/to/destination/
-   ```
-
+   rsync -avz /path/to/local/yolov5s/ username@remote_host:/path/to/destination/yolov5s/
+   `
 ## Performance Optimization
 ### Benchmarking
 Utilize TensorFlow Lite benchmark tool:
@@ -184,4 +223,4 @@ Utilize TensorFlow Lite benchmark tool:
 
 ---
 
-**Project Status**: Active development, inference achieved with ongoing optimization
+
